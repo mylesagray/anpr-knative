@@ -91,6 +91,16 @@ curl -s -X POST -d '{"instances": [{"b64": "'$(echo $INPUT_IMG)'"}]}' http://loc
 # If the output is `209` then we've been successful in mapping the image as a golden retriever: https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a
 ```
 
+### ANPR
+
+Car with plate:
+
+```sh
+# Query the inference server with the cat image and see what it predicts
+curl -s -X POST -d '{"instances": [{"inputs": "'$(cat test/car.png)'"}]}' http://localhost:8501/v1/models/anpr:predict | jq '.predictions[0].detection_classes'
+
+# If the output is `286` then we've been successful in mapping the image as a cat: https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a
+```
 
 ## Run on KNative
 
