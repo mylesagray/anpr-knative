@@ -11,7 +11,7 @@ export AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxx
 
 Edit `models.config` to point to your bucket:
 
-```json
+```sh
 model_config_list {
   config {
     name: 'half_plus_two'
