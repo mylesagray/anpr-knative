@@ -17,11 +17,16 @@ model_config_list {
     name: 'half_plus_two'
     base_path: 's3://cnr-knative-tfserving-models/models/half_plus_two/'
       model_platform: "tensorflow"
+  },
+  config {
+    name: 'resnet'
+    base_path: 's3://cnr-knative-tfserving-models/models/resnet/'
+      model_platform: "tensorflow"
   }
 }
 ```
 
-Upload the configs and models dirs to the S3 bucket.
+Upload the `configs/` and `models/` dirs to the S3 bucket.
 
 ## Config container to pull config and model from S3 and run container
 
@@ -54,6 +59,7 @@ docker run \
 
 ## Test the container is pulling the model and inference works
 
+You can check the status of the model pull from S3 by checking the container logs with `docker logs -f <container-id>`.
 ### Half plus two
 
 ```sh
