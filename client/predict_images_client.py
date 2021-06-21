@@ -23,8 +23,6 @@ def main(server, labels_path, imagePath):
 			jpeg_bytes = base64.b64encode(image_file.read()).decode('utf-8')
 			predict_request = '{"instances" : [{"b64": "%s"}]}' % jpeg_bytes
 			response = requests.post(server, data=predict_request)
-			print(response.status_code, response.reason)
-			print(response.request.headers)
 		response.raise_for_status()
 		prediction_classes = response.json()['predictions'][0]['detection_classes']
 		prediction_scores = response.json()['predictions'][0]['detection_scores']
