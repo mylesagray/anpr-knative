@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2020 TriggerMesh Inc.
+Copyright (c) 2021 TriggerMesh Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,18 +61,17 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) *cloudev
 	}
 
 	// Send data to TensorflowService
-
 	err, tfResponse := recv.makeTensorflowRequest(image)
 	if err != nil {
 		log.Print(err)
 		return nil
 	}
 
-	log.Print(tfResponse)
+	url := "https://" + req.S3.Bucket.Name + ".s3." + recv.region + ".amazonaws.com/" + req.S3.Object.Key
 
 	event := cloudevents.NewEvent(cloudevents.VersionV1)
 	event.SetType(response)
-	event.SetSource(e.ID())
+	event.SetSource(url)
 	event.SetTime(time.Now())
 	err = event.SetData(cloudevents.ApplicationJSON, tfResponse)
 	if err != nil {
@@ -117,10 +116,6 @@ func encodeFile(f *os.File) string {
 	reader := bufio.NewReader(f)
 	content, _ := ioutil.ReadAll(reader)
 	encoded := base64.StdEncoding.EncodeToString(content)
-
-	// // Print encoded data to console.
-	// // ... The base64 image can be used as a data URI in a browser.
-	// fmt.Println("ENCODED: " + encoded)
 
 	return encoded
 }

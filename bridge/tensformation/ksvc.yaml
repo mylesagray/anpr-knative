@@ -6,7 +6,7 @@ spec:
  template:
   spec:
    containers:
-    - image:
+    - image: gcr.io/fit-stream-305821/tensformation
       env:
         - name: K_SINK
           value: 

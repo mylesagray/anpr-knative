@@ -17,8 +17,8 @@ RUN pip install --upgrade setuptools && \
     pip install cloudevents && \
     pip install tf_object_detection && \
     pip install requests && \
-    pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
-
+    pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib && \
+    pip install cloudevents
 
 EXPOSE 8080
 

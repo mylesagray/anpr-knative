@@ -1,3 +1,16 @@
+# Copyright (c) 2021 TriggerMesh Inc.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from __future__ import print_function
 from flask import Flask, request, make_response, jsonify
 import uuid
@@ -18,6 +31,7 @@ from google.protobuf import text_format
 from apiclient import discovery
 from google.oauth2 import service_account
 from datetime import date
+from cloudevents.http import from_http
 
 import logging
 import os
@@ -66,8 +80,8 @@ def load_labelmap(path):
 def hello_world():
     app.logger.warning(request.data)
     sink = os.environ['K_SINK']
-    req_data = request.get_json()
 
+    req_data = request.get_json()
     prediction_classes = req_data['predictions'][0]['detection_classes']
     prediction_scores = req_data['predictions'][0]['detection_scores']
     prediction_boxes = req_data['predictions'][0]['detection_boxes']
@@ -86,6 +100,11 @@ def hello_world():
     # Perform inference on the full image, and then find the plate text associated with each plate
     licensePlateFound_pred, plateBoxes_pred, charTexts_pred, charBoxes_pred, charScores_pred, plateScores_pred = plateFinder.findPlates(boxes, scores, labels)
 
+
+    event = from_http(request.headers, request.get_data())
+
+    imageURL = event['source']
+
     # Print plate text
     foundPlate = ""
     for charText in charTexts_pred:
@@ -96,7 +115,7 @@ def hello_world():
         "type": "io.triggermesh.functions.tensorflow.client",
         "source": "https://example.com/event-producer",
     }
-    data = { "plate": foundPlate}
+    data = { "plate": foundPlate, "url": imageURL}
 
     event = CloudEvent(attributes, data)
     headers, body = to_structured(event)
@@ -116,7 +135,7 @@ def hello_world():
     d1 = today.strftime("%d/%m/%Y")
 
     rows = [
-        [foundPlate, "s3.url", d1 ],
+        [foundPlate, imageURL, d1 ],
     ]
     service.spreadsheets().values().append(spreadsheetId=spreadsheet_id,range="Sheet1!A:Z",body={"majorDimension": "ROWS","values": rows},valueInputOption="USER_ENTERED").execute()
 

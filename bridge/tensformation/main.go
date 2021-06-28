@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2020 TriggerMesh Inc.
+Copyright (c) 2021 TriggerMesh Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ type Receiver struct {
 	s3d        *s3manager.Downloader
 	sink       string
 	tfEndpoint string
+	region     string
 	httpClient *http.Client
 
 	ceClient cloudevents.Client
@@ -80,6 +81,7 @@ func main() {
 		sink:       ksink,
 		s3d:        downloader,
 		tfEndpoint: tfEndpoint,
+		region:     region,
 		httpClient: http.DefaultClient,
 
 		ceClient: c,
