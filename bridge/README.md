@@ -1,4 +1,27 @@
 # Tensorflow-s3-docker
+
+## Overview 
+
+![ov](./img/overview.png)
+
+This bridge starts with an event propagated by the s3 source. 
+
+This event is then consumed by `tensformation`, this service then performs the following actions:
+
+* Downloads the file.
+* Base64 encodes it.
+* Creates a request from the `Tensorflow server`.
+* Returns an event containing the Tensorflow server response. 
+
+The found plate event is then consumed by the `tensorflow_client`, this service then performs the following actions:
+
+* Performs the Tensorflow response analysis.
+* Updates the provided Google Sheet with the found plate info.
+* Returns an event back to the broker with the found plate. 
+
+An event-display log dump of the cloudevent transactions performed in this bridge can be found in the file `ce_dump.txt`
+
+
 ## Deploying the bridge
 
 1: Deploy the custom tensorflow server in the namespace.

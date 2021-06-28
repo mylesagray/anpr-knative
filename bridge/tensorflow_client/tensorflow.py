@@ -66,9 +66,7 @@ def load_labelmap(path):
 def hello_world():
     app.logger.warning(request.data)
     sink = os.environ['K_SINK']
-    # sink = "http://localhost:8080"
     req_data = request.get_json()
-    # print(req_data)
 
     prediction_classes = req_data['predictions'][0]['detection_classes']
     prediction_scores = req_data['predictions'][0]['detection_scores']
