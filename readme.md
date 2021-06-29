@@ -108,7 +108,7 @@ INPUT_IMG=$(cat test/cars/car.png| base64)
 curl -s -X POST -d '{"instances": [{"b64": "'$(echo $INPUT_IMG)'"}]}' http://localhost:8501/v1/models/anpr:predict | jq '.predictions[0].detection_classes'
 
 #This will ouput the raw TensorFlow model output and it needs a little post-processing to line up the labels with the predictions, I wrote a small CLI to do that:
-$ python client/predict_images_client.py -s http://localhost:8501/v1/models/anpr:predict -i test/cars/ -l test/classes.pbtxt
+$ python client/app/predict_images_client.py -s http://localhost:8501/v1/models/anpr:predict -i test/cars/ -l test/classes.pbtxt
     Found plate:  35nn72
     Found plate:  6y0m172
 ```
@@ -212,7 +212,7 @@ INPUT_IMG=$(cat test/cars/car.png| base64)
 curl -s -X POST -d '{"instances": [{"b64": "'$(echo $INPUT_IMG)'"}]}' http://tf-inference-server.default.10.198.53.135.sslip.io/v1/models/anpr:predict | jq '.predictions[0].detection_classes'
 
 #This will ouput the raw TensorFlow model output and it needs a little post-processing to line up the labels with the predictions, I wrote a small CLI to do that:
-$ python client/predict_images_client.py -s http://tf-inference-server.default.10.198.53.135.sslip.io/v1/models/anpr:predict -i test/cars/ -l test/classes.pbtxt
+$ python client/app/predict_images_client.py -s http://tf-inference-server.default.10.198.53.135.sslip.io/v1/models/anpr:predict -i test/cars/ -l test/classes.pbtxt
     Found plate:  35nn72
     Found plate:  6y0m172
 ```
