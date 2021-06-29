@@ -4,11 +4,33 @@ metadata:
   name: aws
 type: Opaque
 stringData:
-  access_key_id: ""
-  secret_access_key: ""
+  AWS_ACCESS_KEY: ""
+  AWS_SECRET_KEY: ""
 
 ---
-  
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: google
+type: Opaque
+stringData:
+  # Service account credentials in JSON format. 
+  GOOGLE_CREDENTIALS_JSON: |-
+              {
+                "type": "service_account",
+                "project_id": "dev",
+                "private_key_id": "e1e4ad14a8d234adf4963d398863ad12444df",
+                "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQQWFNBgkqhkiG9w0BAQEFAASCB...R6Y=\n-----END PRIVATE KEY-----\n",
+                "client_email": "tst-27@dev.iam.gserviceaccount.com",
+                "client_id": "11547922342598721477",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gstst-27%40dev.iam.gserviceaccount.com"
+              }
+---
+
 apiVersion: sources.triggermesh.io/v1alpha1
 kind: AWSS3Source
 metadata:
@@ -19,11 +41,11 @@ spec:
   credentials:
     accessKeyID:
       valueFromSecret:
-        key: access_key_id
+        key: AWS_ACCESS_KEY
         name: aws
     secretAccessKey:
       valueFromSecret:
-        key: secret_access_key
+        key: AWS_SECRET_KEY
         name: aws
   eventTypes:
   - s3:ObjectCreated:*
@@ -48,15 +70,15 @@ spec:
       # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
         - name: K_SINK
           value: ""
-        - name: AWS_ACCESS_KEY
-          value: ""
-        - name: AWS_SECRET_KEY
-          value: ""
         - name: AWS_REGION
           value: ""
       # This should point the the deployed tensorflow service ie: https://tf-inference-server.jeff.k.triggermesh.io/v1/models/anpr:predict
+      # Please note, the endpoint of '/models/anpr:predict' must be used here.
         - name: TENSORFLOW_ENDPOINT
           value: ""
+      envFrom: 
+        - secretRef:
+            name: aws
 
 ---
 
@@ -95,10 +117,9 @@ spec:
          # The Google sheet ID to be updated
           - name: SHEET_ID
             value: ""
-         # Service account credentials in JSON format. 
-          - name: GOOGLE_CREDENTIALS_JSON
-            value: |-
-              ""
+        envFrom: 
+          - secretRef:
+              name: google
 
 ---
 
@@ -124,19 +145,15 @@ kind: Service
 metadata:
     name: all-display
 spec:
-    template:
-        metadata:
-            annotations: {}
-            labels: {}
-        spec:
-            containers:
-                -
-                    env: []
-                    envFrom: []
-                    image: >-
-                        gcr.io/knative-releases/knative.dev/eventing-contrib/cmd/event_display@sha256:46d5a66f300c3ced590835d379a0e9badf413ae7ab60f21a2550ecedbc9eb9d3
+  template:
+    metadata:
+      annotations: {}
+      labels: {}
+    spec:
+      containers:
+       -  image: gcr.io/knative-releases/knative.dev/eventing-contrib/cmd/event_display@sha256:46d5a66f300c3ced590835d379a0e9badf413ae7ab60f21a2550ecedbc9eb9d3
 
-# OR if you want sockeye
+# OR if you want sockeye 
 # docker.io/n3wscott/sockeye:v0.5.0@sha256:64c22fe8688a6bb2b44854a07b0a2e1ad021cd7ec52a377a6b135afed5e9f5d2
 
 ---
