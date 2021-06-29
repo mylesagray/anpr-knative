@@ -1,0 +1,155 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws
+type: Opaque
+stringData:
+  access_key_id: ""
+  secret_access_key: ""
+
+---
+  
+apiVersion: sources.triggermesh.io/v1alpha1
+kind: AWSS3Source
+metadata:
+  name: my-bucket
+spec:
+  # This should point to your aws s3 bucket IE: arn:aws:s3:us-west-2:925906438773:demobkt-triggermesh
+  arn: ""
+  credentials:
+    accessKeyID:
+      valueFromSecret:
+        key: access_key_id
+        name: aws
+    secretAccessKey:
+      valueFromSecret:
+        key: secret_access_key
+        name: aws
+  eventTypes:
+  - s3:ObjectCreated:*
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default
+
+---
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+ name: tensformation
+spec:
+ template:
+  spec:
+   containers:
+    - image: gcr.io/fit-stream-305821/tensformation
+      env:
+      # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
+        - name: K_SINK
+          value: ""
+        - name: AWS_ACCESS_KEY
+          value: ""
+        - name: AWS_SECRET_KEY
+          value: ""
+        - name: AWS_REGION
+          value: ""
+      # This should point the the deployed tensorflow service ie: https://tf-inference-server.jeff.k.triggermesh.io/v1/models/anpr:predict
+        - name: TENSORFLOW_ENDPOINT
+          value: ""
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: tensformation
+spec:
+  broker: default
+  filter:
+    attributes:
+      type: com.amazon.s3.objectcreated
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: tensformation
+
+---
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: tensorflow-client
+  labels:
+    serving.knative.dev/visibility: cluster-local
+spec:
+  template:
+    spec:
+      containers:
+      - image: gcr.io/fit-stream-305821/tfclient
+        env:
+         # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
+          - name: K_SINK
+            value: ""
+         # The Google sheet ID to be updated
+          - name: SHEET_ID
+            value: ""
+         # Service account credentials in JSON format. 
+          - name: GOOGLE_CREDENTIALS_JSON
+            value: |-
+              ""
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: tensorflow-client
+spec:
+  broker: default
+  filter:
+    attributes:
+      type: io.triggermesh.transformations.s3-tensorflow.response
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: tensorflow-client
+
+---
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+    name: all-display
+spec:
+    template:
+        metadata:
+            annotations: {}
+            labels: {}
+        spec:
+            containers:
+                -
+                    env: []
+                    envFrom: []
+                    image: >-
+                        gcr.io/knative-releases/knative.dev/eventing-contrib/cmd/event_display@sha256:46d5a66f300c3ced590835d379a0e9badf413ae7ab60f21a2550ecedbc9eb9d3
+
+# OR if you want sockeye
+# docker.io/n3wscott/sockeye:v0.5.0@sha256:64c22fe8688a6bb2b44854a07b0a2e1ad021cd7ec52a377a6b135afed5e9f5d2
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: all-display-trigger
+spec:
+    broker: default
+    filter: {}
+    subscriber:
+        ref:
+            apiVersion: serving.knative.dev/v1
+            kind: Service
+            name: all-display
