@@ -1,4 +1,0 @@
-prometheus_config {
-  enable: true,
-  path: "/metrics"
-}
