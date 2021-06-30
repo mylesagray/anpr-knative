@@ -2,6 +2,8 @@
 
 An auto-scaling ML-based number plate recognition system, running on KNative.
 
+![Demo of app inferring a number plate](img/demo.gif)
+
 This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow container detailed here: <https://github.com/mylesagray/docker-tensorflow-s3>, packages the TensorFlow Python client built to interact with the model and adds a "tensformation" component to deploy an event-based auto-scaling ANPR system on KNative.
 
 ## Overview
@@ -68,6 +70,9 @@ kubectl apply -f https://github.com/triggermesh/aws-event-sources/releases/downl
 kubectl -n default apply -f manifest.yaml
 ```
 
+## Running the app
+
+Drop an image of a car or vehicle with a US number plate into the S3 bucket targeted in the deployment above and watch the Google Sheet as a row containing the number plate, image URL and timestamp are populated.
 ## Building the containers
 
 ### Building `tensformation`
