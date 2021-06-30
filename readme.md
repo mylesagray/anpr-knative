@@ -1,6 +1,6 @@
 # Automatic Number Plate Recognition based on KNative
 
-This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow container detailed here: <https://github.com/mylesagray/docker-tensorflow-s3>, packages the TensorFlow Python client and an additional "tensformation" component to deploy an event-based auto-scaling ANPR system on KNative.
+This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow container detailed here: <https://github.com/mylesagray/docker-tensorflow-s3>, packages the TensorFlow Python client built to interact with the model and adds a "tensformation" component to deploy an event-based auto-scaling ANPR system on KNative.
 
 ## Overview
 
