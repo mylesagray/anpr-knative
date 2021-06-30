@@ -30,7 +30,7 @@ from object_detection.protos import string_int_label_map_pb2
 from google.protobuf import text_format
 from apiclient import discovery
 from google.oauth2 import service_account
-from datetime import date
+from datetime import datetime
 from cloudevents.http import from_http
 
 import logging
@@ -131,11 +131,11 @@ def hello_world():
     credentials = service_account.Credentials.from_service_account_info(json.loads(creds), scopes=scopes)
     service = discovery.build('sheets', 'v4', credentials=credentials)
     
-    today = date.today()
-    d1 = today.strftime("%d/%m/%Y, %H:%M:%S")
+    now = datetime.now()
+    time_now = now.strftime("%d/%m/%Y, %H:%M:%S")
 
     rows = [
-        [foundPlate, imageURL, d1 ],
+        [foundPlate, imageURL, time_now ],
     ]
     service.spreadsheets().values().append(spreadsheetId=spreadsheet_id,range="Sheet1!A:Z",body={"majorDimension": "ROWS","values": rows},valueInputOption="USER_ENTERED").execute()
 

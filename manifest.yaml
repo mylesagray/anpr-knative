@@ -187,3 +187,4 @@ spec:
           requests:
             memory: 2Gi
       timeoutSeconds: 300
+      containerConcurrency: 2

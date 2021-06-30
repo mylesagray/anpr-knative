@@ -8,7 +8,7 @@ This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow contain
 
 ## Overview
 
-![ov](./img/overview.png)
+![Architecture Overview](./img/overview.png)
 
 This bridge starts with an event propagated by the s3 source.
 
