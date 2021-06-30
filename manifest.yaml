@@ -180,6 +180,7 @@ spec:
       - args:
         - --model_config_file=/configs/models-local.config
         - --monitoring_config_file=/configs/monitoring_config.txt
+        - --rest_api_timeout_in_ms=180000
         image: harbor-repo.vmware.com/vspheretmm/anpr-serving
         ports:
         - containerPort: 8501
