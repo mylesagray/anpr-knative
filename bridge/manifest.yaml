@@ -17,18 +17,7 @@ type: Opaque
 stringData:
   # Service account credentials in JSON format. 
   GOOGLE_CREDENTIALS_JSON: |-
-              {
-                "type": "service_account",
-                "project_id": "dev",
-                "private_key_id": "e1e4ad14a8d234adf4963d398863ad12444df",
-                "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQQWFNBgkqhkiG9w0BAQEFAASCB...R6Y=\n-----END PRIVATE KEY-----\n",
-                "client_email": "tst-27@dev.iam.gserviceaccount.com",
-                "client_id": "11547922342598721477",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gstst-27%40dev.iam.gserviceaccount.com"
-              }
+              ""
 ---
 
 apiVersion: sources.triggermesh.io/v1alpha1
@@ -37,6 +26,8 @@ metadata:
   name: my-bucket
 spec:
   # This should point to your aws s3 bucket IE: arn:aws:s3:us-west-2:925906438773:demobkt-triggermesh
+  # The default ARN from AWS needs the region and your account ID added to it as above: 
+  # https://docs.triggermesh.io/sources/awss3/#amazon-resource-name-arn
   arn: ""
   credentials:
     accessKeyID:
@@ -65,7 +56,7 @@ spec:
  template:
   spec:
    containers:
-    - image: gcr.io/fit-stream-305821/tensformation
+    - image: harbor-repo.vmware.com/vspheretmm/tensformation
       env:
       # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
         - name: K_SINK
@@ -73,7 +64,7 @@ spec:
         - name: AWS_REGION
           value: ""
       # This should point the the deployed tensorflow service ie: https://tf-inference-server.jeff.k.triggermesh.io/v1/models/anpr:predict
-      # Please note, the endpoint of '/models/anpr:predict' must be used here.
+      # Please note, the endpoint of '/v1/models/anpr:predict' must be used here.
         - name: TENSORFLOW_ENDPOINT
           value: ""
       envFrom: 
@@ -109,12 +100,14 @@ spec:
   template:
     spec:
       containers:
-      - image: gcr.io/fit-stream-305821/tfclient
+      - image: harbor-repo.vmware.com/vspheretmm/tfclient
         env:
          # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
           - name: K_SINK
             value: ""
          # The Google sheet ID to be updated
+         # You need to set up a project, service account and add the sheets service to it:
+         # https://docs.triggermesh.io/targets/googlesheets/
           - name: SHEET_ID
             value: ""
         envFrom: 
@@ -170,3 +163,27 @@ spec:
             apiVersion: serving.knative.dev/v1
             kind: Service
             name: all-display
+
+---
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: tf-inference-server
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/window: 300s
+    spec:
+      containers:
+      - args:
+        - --model_config_file=/configs/models-local.config
+        - --monitoring_config_file=/configs/monitoring_config.txt
+        image: harbor-repo.vmware.com/vspheretmm/anpr-serving
+        ports:
+        - containerPort: 8501
+        resources:
+          requests:
+            memory: 2Gi
+      timeoutSeconds: 300

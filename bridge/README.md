@@ -1,6 +1,6 @@
 # Tensorflow-s3-docker
 
-## Overview 
+## Overview
 
 ![ov](./img/overview.png)
 
@@ -21,50 +21,58 @@ The found plate event is then consumed by the `tensorflow_client`, this service 
 
 An event-display log dump of the cloudevent transactions performed in this bridge can be found in the file `ce_dump.txt`
 
-
 ## Deploying the bridge
 
-1: Deploy the custom tensorflow server in the namespace.
+1: Update the `manifest.yaml` file, replacing the placeholder `""` marks with your information.
 
-```
-kn service create tf-inference-server -n default --autoscale-window 300s \
-  --request "memory=2Gi" \
-  -p 8501 --image harbor-repo.vmware.com/vspheretmm/anpr-serving \
-  --arg --model_config_file=/configs/models-local.config \
-  --arg --monitoring_config_file=/configs/monitoring_config.txt
-```
+2: Deploy the bridge.
 
-2: Update the `manifest.yaml` file, replacing the placeholder `""` marks.
-
-3: Deploy the bridge.
-```
+```sh
 kubectl -n default apply -f manifest.yaml
 ```
 
 ## Building the containers
+
 ### Building tensformation
+
 1: Move to the tensformation directory.
-```
+
+```sh
 cd tensformation
 ```
 
 2: Create the go.mod file.
-```
-go mod init
+
+```sh
+go mod init tensformation
 ```
 
 3: Build & submit the dockerfile.
-```
+
+```sh
+docker build . -t harbor-repo.vmware.com/vspheretmm/tensformation:latest -t tensformation:latest
+docker push harbor-repo.vmware.com/vspheretmm/tensformation:latest
+
+## OR
+
 gcloud builds submit --tag gcr.io/<project>/tensformation .
 ```
 
 ### Building tensorflow_client
+
 1: Move to the `tensorflow_client` directory.
-```
+
+```sh
 cd tensorflow_client
 ```
 
 2: Build & submit the dockerfile.
-```
+
+```sh
+docker build . -t harbor-repo.vmware.com/vspheretmm/tfclient:latest -t tfclient:latest
+docker push harbor-repo.vmware.com/vspheretmm/tfclient:latest
+
+## OR
+
 gcloud builds submit --tag gcr.io/<project>/tfclient .
 ```
