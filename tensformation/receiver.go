@@ -39,32 +39,29 @@ const (
 	response             = "io.triggermesh.transformations.s3-tensorflow.response"
 )
 
-const eventSource = "io.triggermesh.transformations.s3-tensorflow"
-
 func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) *cloudevents.Event {
 	log.Printf("Processing event from source %q", e.Source())
 	if typ := e.Type(); typ != s3ObjectCreatedEvent {
 		fmt.Println("wrong event type")
-		return nil
+		return emitErrorEvent("wrong event type", "wrongEventType")
 	}
 
 	req := &S3Event{}
 	if err := e.DataAs(&req); err != nil {
 		log.Print(err)
-		return nil
+		return emitErrorEvent(err.Error(), "unmarshalingEvent")
 	}
 
 	image, err := recv.downloadFromS3Bucket(req)
 	if err != nil {
 		log.Print(err)
-		return nil
+		return emitErrorEvent(err.Error(), "downloadingFromS3")
 	}
 
-	// Send data to TensorflowService
 	err, tfResponse := recv.makeTensorflowRequest(image)
 	if err != nil {
 		log.Print(err)
-		return nil
+		return emitErrorEvent(err.Error(), "requestingFromTensorflow")
 	}
 
 	url := "https://" + req.S3.Bucket.Name + ".s3." + recv.region + ".amazonaws.com/" + req.S3.Object.Key
@@ -76,10 +73,25 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) *cloudev
 	err = event.SetData(cloudevents.ApplicationJSON, tfResponse)
 	if err != nil {
 		log.Print(err)
-		return nil
+		return emitErrorEvent(err.Error(), "settingCEData")
 	}
 
 	return &event
+}
+
+func emitErrorEvent(er string, source string) *cloudevents.Event {
+	responseEvent := cloudevents.NewEvent(cloudevents.VersionV1)
+	responseEvent.SetType(response + ".error")
+	responseEvent.SetSource(source)
+	responseEvent.SetTime(time.Now())
+	err := responseEvent.SetData(cloudevents.ApplicationJSON, er)
+	if err != nil {
+		log.Print(err)
+		return nil
+	}
+
+	return &responseEvent
+
 }
 
 // downloadFromS3Bucket returns a base64 encoded string of the new image at s3
@@ -124,9 +136,7 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 	reqBody := &TensorflowRequest{
 		Instances: []struct {
 			B64 string "json:\"b64\""
-		}{struct {
-			B64 string "json:\"b64\""
-		}{B64: image}},
+		}{{B64: image}},
 	}
 
 	b, err := json.Marshal(reqBody)
