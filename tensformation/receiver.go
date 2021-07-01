@@ -73,7 +73,7 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) *cloudev
 	err = event.SetData(cloudevents.ApplicationJSON, tfResponse)
 	if err != nil {
 		log.Print(err)
-		return emitErrorEvent("wrong event type", "settingCEData")
+		return emitErrorEvent(err.Error(), "settingCEData")
 	}
 
 	return &event
