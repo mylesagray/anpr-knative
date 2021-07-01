@@ -53,23 +53,27 @@ kind: Service
 metadata:
  name: tensformation
 spec:
- template:
-  spec:
-   containers:
-    - image: harbor-repo.vmware.com/vspheretmm/tensformation
-      env:
-      # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
-        - name: K_SINK
-          value: ""
-        - name: AWS_REGION
-          value: ""
-      # This should point the the deployed tensorflow service ie: https://tf-inference-server.jeff.k.triggermesh.io/v1/models/anpr:predict
-      # Please note, the endpoint of '/v1/models/anpr:predict' must be used here.
-        - name: TENSORFLOW_ENDPOINT
-          value: ""
-      envFrom: 
-        - secretRef:
-            name: aws
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+    spec:
+      containers:
+        - image: harbor-repo.vmware.com/vspheretmm/tensformation
+          env:
+          # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
+            - name: K_SINK
+              value: ""
+            - name: AWS_REGION
+              value: ""
+          # This should point the the deployed tensorflow service ie: https://tf-inference-server.jeff.k.triggermesh.io/v1/models/anpr:predict
+          # Please note, the endpoint of '/v1/models/anpr:predict' must be used here.
+            - name: TENSORFLOW_ENDPOINT
+              value: ""
+          envFrom: 
+            - secretRef:
+                name: aws
+      timeoutSeconds: 300
 
 ---
 
@@ -175,12 +179,17 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/window: 300s
+        autoscaling.knative.dev/maxScale: "3"
+        autoscaling.knative.dev/minScale: "1"
     spec:
       containers:
       - args:
         - --model_config_file=/configs/models-local.config
         - --monitoring_config_file=/configs/monitoring_config.txt
         - --rest_api_timeout_in_ms=180000
+        env:
+        - name: TF_CPP_VMODULE
+          value: http_server=3
         image: harbor-repo.vmware.com/vspheretmm/anpr-serving
         ports:
         - containerPort: 8501
