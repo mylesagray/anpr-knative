@@ -39,7 +39,7 @@ const (
 	response             = "io.triggermesh.transformations.s3-tensorflow.response"
 )
 
-func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) *cloudevents.Event {
+func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
 	log.Printf("Processing event from source %q", e.Source())
 	if typ := e.Type(); typ != s3ObjectCreatedEvent {
 		fmt.Println("wrong event type")
@@ -76,22 +76,7 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) *cloudev
 		return emitErrorEvent(err.Error(), "settingCEData")
 	}
 
-	return &event
-}
-
-func emitErrorEvent(er string, source string) *cloudevents.Event {
-	responseEvent := cloudevents.NewEvent(cloudevents.VersionV1)
-	responseEvent.SetType(response + ".error")
-	responseEvent.SetSource(source)
-	responseEvent.SetTime(time.Now())
-	err := responseEvent.SetData(cloudevents.ApplicationJSON, er)
-	if err != nil {
-		log.Print(err)
-		return nil
-	}
-
-	return &responseEvent
-
+	return &event, cloudevents.ResultACK
 }
 
 // downloadFromS3Bucket returns a base64 encoded string of the new image at s3
@@ -162,6 +147,20 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 	}
 
 	return nil, body
+}
+
+func emitErrorEvent(er string, source string) (*cloudevents.Event, cloudevents.Result) {
+	responseEvent := cloudevents.NewEvent(cloudevents.VersionV1)
+	responseEvent.SetType(response + ".error")
+	responseEvent.SetSource(source)
+	responseEvent.SetTime(time.Now())
+	err := responseEvent.SetData(cloudevents.ApplicationJSON, er)
+	if err != nil {
+		log.Print(err)
+		return nil, cloudevents.NewHTTPResult(http.StatusInternalServerError, "setting cloudevent response data")
+	}
+
+	return &responseEvent, cloudevents.NewHTTPResult(http.StatusInternalServerError, er)
 }
 
 // TODO
