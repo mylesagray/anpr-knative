@@ -40,8 +40,9 @@ import json
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
-
 app = Flask(__name__)
+
+sink = os.environ['K_SINK']
 
 
 def _validate_label_map(label_map):
@@ -76,46 +77,12 @@ def load_labelmap(path):
   _validate_label_map(label_map)
   return label_map
 
-@app.route('/', methods=['POST'])
-def hello_world():
-    app.logger.warning(request.data)
-    sink = os.environ['K_SINK']
-
-    req_data = request.get_json()
-    prediction_classes = req_data['predictions'][0]['detection_classes']
-    prediction_scores = req_data['predictions'][0]['detection_scores']
-    prediction_boxes = req_data['predictions'][0]['detection_boxes']
-    boxes = np.squeeze(prediction_boxes)
-    scores = np.squeeze(prediction_scores)
-    labels = np.squeeze(prediction_classes)
-
-    # load the class labels from disk
-    labelMap = load_labelmap("classes.pbtxt")
-    categories = label_map_util.convert_label_map_to_categories(labelMap, max_num_classes=37,use_display_name=True)
-    categoryIdx = label_map_util.create_category_index(categories)
-
-    # # create a plateFinder
-    plateFinder = PlateFinder(0.5, categoryIdx,rejectPlates=False, charIOUMax=0.3)
-
-    # Perform inference on the full image, and then find the plate text associated with each plate
-    licensePlateFound_pred, plateBoxes_pred, charTexts_pred, charBoxes_pred, charScores_pred, plateScores_pred = plateFinder.findPlates(boxes, scores, labels)
-
-
-    event = from_http(request.headers, request.get_data())
-
-    imageURL = event['source']
-
-    # Print plate text
-    foundPlate = ""
-    for charText in charTexts_pred:
-        print("Found plate: ", charText)
-        foundPlate = charText
-
+def emitErrorEvent(err, source):
     attributes = {
-        "type": "io.triggermesh.functions.tensorflow.client",
-        "source": "https://example.com/event-producer",
+    "type": "io.triggermesh.functions.tensorflow.client.response.error",
+    "source": source,
     }
-    data = { "plate": foundPlate, "url": imageURL}
+    data = { "error": err}
 
     event = CloudEvent(attributes, data)
     headers, body = to_structured(event)
@@ -123,23 +90,109 @@ def hello_world():
     # send and print event
     requests.post(sink, headers=headers, data=body)
     print(f"Sent {event['id']} from {event['source']} with " f"{event.data}")
+    return 
 
-    creds = os.environ['GOOGLE_CREDENTIALS_JSON']
-    spreadsheet_id = os.environ['SHEET_ID']
+def emitNoTagFoundEvent(data, source):
+    attributes = {
+    "type": "io.triggermesh.functions.tensorflow.client.response.noid",
+    "source": source,
+    }
 
-    scopes = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/spreadsheets"]
-    credentials = service_account.Credentials.from_service_account_info(json.loads(creds), scopes=scopes)
-    service = discovery.build('sheets', 'v4', credentials=credentials)
+    event = CloudEvent(attributes, data)
+    headers, body = to_structured(event)
+
+    # send and print event
+    requests.post(sink, headers=headers, data=body)
+    print(f"Sent {event['id']} from {event['source']} with " f"{event.data}")
+    return 
+
+@app.route('/', methods=['POST'])
+def hello_world():
+    try:
+      req_data = request.get_json()
+      prediction_classes = req_data['predictions'][0]['detection_classes']
+      prediction_scores = req_data['predictions'][0]['detection_scores']
+      prediction_boxes = req_data['predictions'][0]['detection_boxes']
+      boxes = np.squeeze(prediction_boxes)
+      scores = np.squeeze(prediction_scores)
+      labels = np.squeeze(prediction_classes)
+
+      # load the class labels from disk
+      labelMap = load_labelmap("classes.pbtxt")
+      categories = label_map_util.convert_label_map_to_categories(labelMap, max_num_classes=37,use_display_name=True)
+      categoryIdx = label_map_util.create_category_index(categories)
     
-    now = datetime.now()
-    time_now = now.strftime("%d/%m/%Y, %H:%M:%S")
+      # create a plateFinder
+      plateFinder = PlateFinder(0.5, categoryIdx,rejectPlates=False, charIOUMax=0.3)
 
-    rows = [
-        [foundPlate, imageURL, time_now ],
-    ]
-    service.spreadsheets().values().append(spreadsheetId=spreadsheet_id,range="Sheet1!A:Z",body={"majorDimension": "ROWS","values": rows},valueInputOption="USER_ENTERED").execute()
+      # Perform inference on the full image, and then find the plate text associated with each plate
+      licensePlateFound_pred, plateBoxes_pred, charTexts_pred, charBoxes_pred, charScores_pred, plateScores_pred = plateFinder.findPlates(boxes, scores, labels)
 
-    return data
+      event = from_http(request.headers, request.get_data())
+      imageURL = event['source']
+
+      # Print plate text
+      foundPlate = ""
+      for charText in charTexts_pred:
+          print("Found plate: ", charText)
+          foundPlate = charText
+      if foundPlate != "":
+        attributes = {
+            "type": "io.triggermesh.functions.tensorflow.client",
+            "source": "https://example.com/event-producer",
+        }
+        data = { "plate": foundPlate, "url": imageURL}
+
+        event = CloudEvent(attributes, data)
+        headers, body = to_structured(event)
+
+        # send and print event
+        requests.post(sink, headers=headers, data=body)
+        print(f"Sent {event['id']} from {event['source']} with " f"{event.data}")
+
+        creds = os.environ['GOOGLE_CREDENTIALS_JSON']
+        spreadsheet_id = os.environ['SHEET_ID']
+
+        scopes = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/spreadsheets"]
+        credentials = service_account.Credentials.from_service_account_info(json.loads(creds), scopes=scopes)
+        service = discovery.build('sheets', 'v4', credentials=credentials)
+
+        now = datetime.now()
+        time_now = now.strftime("%d/%m/%Y, %H:%M:%S")
+
+        rows = [
+            [foundPlate, imageURL, time_now ],
+        ]
+        service.spreadsheets().values().append(spreadsheetId=spreadsheet_id,range="Sheet1!A:Z",body={"majorDimension": "ROWS","values": rows},valueInputOption="USER_ENTERED").execute()
+
+        return data
+
+      if foundPlate == "":
+        event = from_http(request.headers, request.get_data())
+        headers, body = to_structured(event)
+        emitNoTagFoundEvent(event.data,"noPlateID")
+        return 'no plate match'
+
+    except KeyError as e:
+      emitErrorEvent(str(e) ,"keyError")
+      return str(e)
+
+    except TypeError as e:
+      emitErrorEvent(str(e),"typeError")
+      return str(e)
+      
+    except FileNotFoundError as e:
+     emitErrorEvent(str(e),"fileNotFoundError")
+     return str(e)
+
+    except Exception as e:
+     print("Oops!", e, "occurred.")
+     emitErrorEvent( str(e),"general")
+     return str(e)
+
+    return 'ok'
+
+
 
 if __name__ == '__main__':
     app.debug = True
