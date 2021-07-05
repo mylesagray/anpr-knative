@@ -54,12 +54,9 @@ metadata:
  name: tensformation
 spec:
   template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/minScale: "1"
     spec:
       containers:
-        - image: harbor-repo.vmware.com/vspheretmm/tensformation
+        - image: quay.io/mylesagray/tensformation
           env:
           # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
             - name: K_SINK
@@ -73,7 +70,6 @@ spec:
           envFrom: 
             - secretRef:
                 name: aws
-      timeoutSeconds: 300
 
 ---
 
@@ -104,7 +100,7 @@ spec:
   template:
     spec:
       containers:
-      - image: harbor-repo.vmware.com/vspheretmm/tfclient
+      - image: quay.io/mylesagray/tfclient
         env:
          # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
           - name: K_SINK
@@ -145,15 +141,14 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/window: 300s
-        autoscaling.knative.dev/maxScale: "3"
+        autoscaling.knative.dev/maxScale: "8"
         autoscaling.knative.dev/minScale: "1"
     spec:
       containers:
       - args:
         - --model_config_file=/configs/models-local.config
         - --monitoring_config_file=/configs/monitoring_config.txt
-        - --rest_api_timeout_in_ms=180000
+        - --rest_api_timeout_in_ms=150000
         env:
         - name: TF_CPP_VMODULE
           value: http_server=3
@@ -162,9 +157,9 @@ spec:
         - containerPort: 8501
         resources:
           requests:
+            cpu: 1
             memory: 2Gi
-      timeoutSeconds: 300
-      containerConcurrency: 2
+      containerConcurrency: 1
 
 ---
 
