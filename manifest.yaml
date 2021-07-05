@@ -152,7 +152,7 @@ spec:
         env:
         - name: TF_CPP_VMODULE
           value: http_server=3
-        image: harbor-repo.vmware.com/vspheretmm/anpr-serving
+        image: quay.io/mylesagray/anpr-serving
         ports:
         - containerPort: 8501
         resources:
