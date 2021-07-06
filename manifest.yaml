@@ -141,14 +141,16 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/maxScale: "8"
-        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "5"
+        #autoscaling.knative.dev/minScale: "1"
     spec:
       containers:
       - args:
         - --model_config_file=/configs/models-local.config
         - --monitoring_config_file=/configs/monitoring_config.txt
-        - --rest_api_timeout_in_ms=150000
+        - --rest_api_timeout_in_ms=0
+        - --tensorflow_intra_op_parallelism=4
+        - --tensorflow_inter_op_parallelism=4
         env:
         - name: TF_CPP_VMODULE
           value: http_server=3
@@ -157,8 +159,11 @@ spec:
         - containerPort: 8501
         resources:
           requests:
-            cpu: 1
+            cpu: 2
             memory: 2Gi
+          limits:
+            cpu: 4 
+            memory: 6Gi
       containerConcurrency: 1
 
 ---
