@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -77,12 +78,16 @@ func main() {
 		log.Fatalf("failed to create client, %v", err)
 	}
 
+	httpClient := http.Client{
+		Timeout: 500 * time.Second,
+	}
+
 	r := Receiver{
 		sink:       ksink,
 		s3d:        downloader,
 		tfEndpoint: tfEndpoint,
 		region:     region,
-		httpClient: http.DefaultClient,
+		httpClient: &httpClient,
 
 		ceClient: c,
 	}

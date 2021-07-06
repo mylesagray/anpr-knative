@@ -40,32 +40,30 @@ const (
 )
 
 func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
-	log.Printf("Processing event from source %q", e.Source())
-	if typ := e.Type(); typ != s3ObjectCreatedEvent {
-		fmt.Println("wrong event type")
-		return emitErrorEvent("wrong event type", "wrongEventType")
-	}
-
 	req := &S3Event{}
 	if err := e.DataAs(&req); err != nil {
 		log.Print(err)
-		return emitErrorEvent(err.Error(), "unmarshalingEvent")
+		return recv.emitErrorEvent(err.Error(), "unmarshalingEvent")
+
 	}
 
 	image, err := recv.downloadFromS3Bucket(req)
 	if err != nil {
 		log.Print(err)
-		return emitErrorEvent(err.Error(), "downloadingFromS3")
+		return recv.emitErrorEvent(err.Error(), "downloadingFromS3")
+
 	}
 
 	err, tfResponse := recv.makeTensorflowRequest(image)
 	if err != nil {
 		log.Print(err)
-		return emitErrorEvent(err.Error(), "requestingFromTensorflow")
+		return recv.emitErrorEvent(err.Error(), "requestingFromTensorflow")
+
 	}
 
 	url := "https://" + req.S3.Bucket.Name + ".s3." + recv.region + ".amazonaws.com/" + req.S3.Object.Key
 
+	cx := cloudevents.ContextWithTarget(context.Background(), recv.sink)
 	event := cloudevents.NewEvent(cloudevents.VersionV1)
 	event.SetType(response)
 	event.SetSource(url)
@@ -73,10 +71,15 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloude
 	err = event.SetData(cloudevents.ApplicationJSON, tfResponse)
 	if err != nil {
 		log.Print(err)
-		return emitErrorEvent(err.Error(), "settingCEData")
+		return recv.emitErrorEvent(err.Error(), "settingCEData")
+
 	}
 
-	return &event, cloudevents.ResultACK
+	if result := recv.ceClient.Send(cx, event); cloudevents.IsUndelivered(result) {
+		log.Print("failed to send, %v", result)
+	}
+
+	return nil, cloudevents.ResultACK
 }
 
 // downloadFromS3Bucket returns a base64 encoded string of the new image at s3
@@ -126,30 +129,39 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 
 	b, err := json.Marshal(reqBody)
 	if err != nil {
-		return err, b
+		return err, nil
 	}
 
 	request, err := http.NewRequest(http.MethodPost, recv.tfEndpoint, bytes.NewBuffer(b))
 	if err != nil {
-		return err, b
+		return err, nil
 	}
 
 	res, err := recv.httpClient.Do(request)
 	if err != nil {
-		return err, b
+		return err, nil
 	}
 
 	defer res.Body.Close()
 
+	fmt.Println(res.StatusCode)
+
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return err, b
+		return err, nil
+	}
+
+	if res.StatusCode != 200 {
+		fmt.Println("non 200 status code retrieved from tensorflow server")
+		fmt.Println(res.StatusCode)
+		recv.emitErrorEvent(string(body), "requestingFromTensorflowServer")
+		return fmt.Errorf("non 200 status code returned from tensorflow server"), nil
 	}
 
 	return nil, body
 }
 
-func emitErrorEvent(er string, source string) (*cloudevents.Event, cloudevents.Result) {
+func (recv *Receiver) emitErrorEvent(er string, source string) (*cloudevents.Event, cloudevents.Result) {
 	responseEvent := cloudevents.NewEvent(cloudevents.VersionV1)
 	responseEvent.SetType(response + ".error")
 	responseEvent.SetSource(source)
