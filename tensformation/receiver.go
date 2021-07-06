@@ -44,21 +44,18 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloude
 	if err := e.DataAs(&req); err != nil {
 		log.Print(err)
 		return recv.emitErrorEvent(err.Error(), "unmarshalingEvent")
-
 	}
 
 	image, err := recv.downloadFromS3Bucket(req)
 	if err != nil {
 		log.Print(err)
 		return recv.emitErrorEvent(err.Error(), "downloadingFromS3")
-
 	}
 
 	err, tfResponse := recv.makeTensorflowRequest(image)
 	if err != nil {
 		log.Print(err)
 		return recv.emitErrorEvent(err.Error(), "requestingFromTensorflow")
-
 	}
 
 	url := "https://" + req.S3.Bucket.Name + ".s3." + recv.region + ".amazonaws.com/" + req.S3.Object.Key
@@ -72,7 +69,6 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloude
 	if err != nil {
 		log.Print(err)
 		return recv.emitErrorEvent(err.Error(), "settingCEData")
-
 	}
 
 	if result := recv.ceClient.Send(cx, event); cloudevents.IsUndelivered(result) {
@@ -106,7 +102,6 @@ func (recv *Receiver) downloadFromS3Bucket(e *S3Event) (string, error) {
 	}
 
 	fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
-
 	ef := encodeFile(file)
 
 	return ef, nil
@@ -176,7 +171,7 @@ func (recv *Receiver) emitErrorEvent(er string, source string) (*cloudevents.Eve
 }
 
 // TODO
-// func (recv *Receiver) deleteLocalFile(){}
+// func (recv *Receiver) deleteLocalFile(){}ß
 
 // func (recv *Receiver) craftCe(msg, id string) (*cloudevents.Event, error) {
 // 	event := cloudevents.NewEvent(cloudevents.VersionV1)
