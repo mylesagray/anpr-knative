@@ -59,8 +59,6 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloude
 	}
 
 	url := "https://" + req.S3.Bucket.Name + ".s3." + recv.region + ".amazonaws.com/" + req.S3.Object.Key
-
-	cx := cloudevents.ContextWithTarget(context.Background(), recv.sink)
 	event := cloudevents.NewEvent(cloudevents.VersionV1)
 	event.SetType(response)
 	event.SetSource(url)
@@ -71,11 +69,7 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloude
 		return recv.emitErrorEvent(err.Error(), "settingCEData")
 	}
 
-	if result := recv.ceClient.Send(cx, event); cloudevents.IsUndelivered(result) {
-		log.Print("failed to send, %v", result)
-	}
-
-	return nil, cloudevents.ResultACK
+	return &event, cloudevents.ResultACK
 }
 
 // downloadFromS3Bucket returns a base64 encoded string of the new image at s3
@@ -139,8 +133,6 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 
 	defer res.Body.Close()
 
-	fmt.Println(res.StatusCode)
-
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err, nil
@@ -149,8 +141,7 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 	if res.StatusCode != 200 {
 		fmt.Println("non 200 status code retrieved from tensorflow server")
 		fmt.Println(res.StatusCode)
-		recv.emitErrorEvent(string(body), "requestingFromTensorflowServer")
-		return fmt.Errorf("non 200 status code returned from tensorflow server"), nil
+		return fmt.Errorf("non 200 status code returned from tensorflow server, %v", res.StatusCode), nil
 	}
 
 	return nil, body
