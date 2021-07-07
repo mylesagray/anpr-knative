@@ -96,17 +96,26 @@ func (recv *Receiver) downloadFromS3Bucket(e *S3Event) (string, error) {
 	}
 
 	fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
-	ef := encodeFile(file)
+	ef, err := encodeFile(file)
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
 
 	return ef, nil
 }
 
-func encodeFile(f *os.File) string {
+func encodeFile(f *os.File) (string, error) {
 	reader := bufio.NewReader(f)
 	content, _ := ioutil.ReadAll(reader)
 	encoded := base64.StdEncoding.EncodeToString(content)
+	err := os.Remove(f.Name())
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
 
-	return encoded
+	return encoded, nil
 }
 
 func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
@@ -118,16 +127,23 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 
 	b, err := json.Marshal(reqBody)
 	if err != nil {
+		fmt.Println("marshling inside TF request")
 		return err, nil
 	}
 
 	request, err := http.NewRequest(http.MethodPost, recv.tfEndpoint, bytes.NewBuffer(b))
 	if err != nil {
+		fmt.Println("marshling inside TF request")
 		return err, nil
 	}
 
 	res, err := recv.httpClient.Do(request)
 	if err != nil {
+		fmt.Println("Doing the request")
+		fmt.Println("err:")
+		fmt.Println(err)
+		fmt.Println("res:")
+		fmt.Println(res)
 		return err, nil
 	}
 
@@ -135,6 +151,7 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
+		fmt.Println("reading body")
 		return err, nil
 	}
 
@@ -160,19 +177,3 @@ func (recv *Receiver) emitErrorEvent(er string, source string) (*cloudevents.Eve
 
 	return &responseEvent, cloudevents.NewHTTPResult(http.StatusInternalServerError, er)
 }
-
-// TODO
-// func (recv *Receiver) deleteLocalFile(){}ß
-
-// func (recv *Receiver) craftCe(msg, id string) (*cloudevents.Event, error) {
-// 	event := cloudevents.NewEvent(cloudevents.VersionV1)
-// 	event.SetType(response)
-// 	event.SetSource(id)
-// 	event.SetTime(time.Now())
-// 	err := event.SetData(cloudevents.ApplicationJSON, msg)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &event, nil
-// }

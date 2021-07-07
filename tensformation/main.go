@@ -21,7 +21,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -50,23 +49,18 @@ type Receiver struct {
 }
 
 func main() {
-	ksink := os.Getenv(sink)
-	if ksink == "" {
-		log.Fatal("Undefined environment variable: " + sink)
-	}
-
 	accKey := os.Getenv(envAccKey)
 	if accKey == "" {
 		log.Fatal("Undefined environment variable: " + envAccKey)
 	}
 
 	region := os.Getenv(envRegion)
-	if ksink == "" {
+	if region == "" {
 		log.Fatal("Undefined environment variable: " + envRegion)
 	}
 
 	tfEndpoint := os.Getenv(envTensorflowEndpoint)
-	if ksink == "" {
+	if tfEndpoint == "" {
 		log.Fatal("Undefined environment variable: " + envTensorflowEndpoint)
 	}
 
@@ -78,16 +72,11 @@ func main() {
 		log.Fatalf("failed to create client, %v", err)
 	}
 
-	httpClient := http.Client{
-		Timeout: 500 * time.Second,
-	}
-
 	r := Receiver{
-		sink:       ksink,
 		s3d:        downloader,
 		tfEndpoint: tfEndpoint,
 		region:     region,
-		httpClient: &httpClient,
+		httpClient: http.DefaultClient,
 
 		ceClient: c,
 	}
