@@ -54,6 +54,9 @@ metadata:
  name: tensformation
 spec:
   template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/target: "4"
     spec:
       containers:
         - image: quay.io/mylesagray/tensformation
@@ -98,6 +101,9 @@ metadata:
     serving.knative.dev/visibility: cluster-local
 spec:
   template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/target: "10"
     spec:
       containers:
       - image: quay.io/mylesagray/tfclient
@@ -141,30 +147,30 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/maxScale: "5"
-        #autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/window: "180s"
+        autoscaling.knative.dev/target: "5"
     spec:
       containers:
       - args:
         - --model_config_file=/configs/models-local.config
         - --monitoring_config_file=/configs/monitoring_config.txt
         - --rest_api_timeout_in_ms=0
-        - --tensorflow_intra_op_parallelism=4
-        - --tensorflow_inter_op_parallelism=4
+        - --tensorflow_intra_op_parallelism=2
+        - --tensorflow_inter_op_parallelism=2
+        - --max_batch_size=5
+        - --num_batch_threads=2
+        - --max_enqueued_batches=1
+        - --enable_batching
         env:
         - name: TF_CPP_VMODULE
           value: http_server=3
-        image: quay.io/mylesagray/anpr-serving
+        image: quay.io/mylesagray/anpr-serving:r1.15-cpu-opt
         ports:
         - containerPort: 8501
         resources:
           requests:
             cpu: 2
-            memory: 2Gi
-          limits:
-            cpu: 4 
-            memory: 6Gi
-      containerConcurrency: 1
+            memory: 4Gi
 
 ---
 
