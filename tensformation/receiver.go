@@ -36,25 +36,25 @@ import (
 
 const (
 	s3ObjectCreatedEvent = "com.amazon.s3.objectcreated"
-	response             = "io.triggermesh.transformations.s3-tensorflow.response"
+	response             = "io.triggermesh.transformations.tensformation.response"
 )
 
 func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
 	req := &S3Event{}
 	if err := e.DataAs(&req); err != nil {
-		log.Print("unmarshaling Event: %v", err)
+		log.Printf("unmarshaling Event: %v", err)
 		return emitErrorEvent(err.Error(), "unmarshalingEvent")
 	}
 
 	image, err := recv.downloadFromS3Bucket(req)
 	if err != nil {
-		log.Print("downloading from s3: %v", err)
+		log.Printf("downloading from s3: %v", err)
 		return emitErrorEvent(err.Error(), "downloadingFromS3")
 	}
 
-	err, tfResponse := recv.makeTensorflowRequest(image)
+	tfResponse, err := recv.makeTensorflowRequest(image)
 	if err != nil {
-		log.Print("requesting From Tensorflow: %v", err)
+		log.Printf("requesting From Tensorflow: %v", err)
 		return emitErrorEvent(err.Error(), "requestingFromTensorflow")
 	}
 
@@ -65,7 +65,7 @@ func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloude
 	event.SetTime(time.Now())
 	err = event.SetData(cloudevents.ApplicationJSON, tfResponse)
 	if err != nil {
-		log.Print("setting cloudevent data: %v", err)
+		log.Printf("setting cloudevent data: %v", err)
 		return emitErrorEvent(err.Error(), "settingCEData")
 	}
 
@@ -114,7 +114,7 @@ func encodeFile(f *os.File) (string, error) {
 	return encoded, nil
 }
 
-func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
+func (recv *Receiver) makeTensorflowRequest(image string) ([]byte, error) {
 	reqBody := &TensorflowRequest{
 		Instances: []struct {
 			B64 string "json:\"b64\""
@@ -123,31 +123,30 @@ func (recv *Receiver) makeTensorflowRequest(image string) (error, []byte) {
 
 	b, err := json.Marshal(reqBody)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	request, err := http.NewRequest(http.MethodPost, recv.tfEndpoint, bytes.NewBuffer(b))
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	res, err := recv.httpClient.Do(request)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	defer res.Body.Close()
-
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	if res.StatusCode != 200 {
-		return fmt.Errorf("non 200 status code returned from tensorflow server, %v", res.StatusCode), nil
+		return nil, fmt.Errorf("non 200 status code returned from tensorflow server, %v", res.StatusCode)
 	}
 
-	return nil, body
+	return body, err
 }
 
 func emitErrorEvent(er string, source string) (*cloudevents.Event, cloudevents.Result) {
@@ -157,7 +156,7 @@ func emitErrorEvent(er string, source string) (*cloudevents.Event, cloudevents.R
 	responseEvent.SetTime(time.Now())
 	err := responseEvent.SetData(cloudevents.ApplicationJSON, er)
 	if err != nil {
-		log.Print("setting error cloudevent data: %v", err)
+		log.Printf("setting error cloudevent data: %v", err)
 		return nil, cloudevents.NewHTTPResult(http.StatusInternalServerError, "setting cloudevent response data")
 	}
 
