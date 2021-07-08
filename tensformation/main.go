@@ -49,23 +49,18 @@ type Receiver struct {
 }
 
 func main() {
-	ksink := os.Getenv(sink)
-	if ksink == "" {
-		log.Fatal("Undefined environment variable: " + sink)
-	}
-
 	accKey := os.Getenv(envAccKey)
 	if accKey == "" {
 		log.Fatal("Undefined environment variable: " + envAccKey)
 	}
 
 	region := os.Getenv(envRegion)
-	if ksink == "" {
+	if region == "" {
 		log.Fatal("Undefined environment variable: " + envRegion)
 	}
 
 	tfEndpoint := os.Getenv(envTensorflowEndpoint)
-	if ksink == "" {
+	if tfEndpoint == "" {
 		log.Fatal("Undefined environment variable: " + envTensorflowEndpoint)
 	}
 
@@ -78,7 +73,6 @@ func main() {
 	}
 
 	r := Receiver{
-		sink:       ksink,
 		s3d:        downloader,
 		tfEndpoint: tfEndpoint,
 		region:     region,
