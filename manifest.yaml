@@ -59,7 +59,7 @@ spec:
         autoscaling.knative.dev/target: "4"
     spec:
       containers:
-        - image: quay.io/mylesagray/tensformation
+        - image: ghcr.io/mylesagray/tensformation
           env:
           # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
             - name: K_SINK
@@ -106,7 +106,7 @@ spec:
         autoscaling.knative.dev/target: "10"
     spec:
       containers:
-      - image: quay.io/mylesagray/tfclient
+      - image: ghcr.io/mylesagray/label_analyser
         env:
          # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
           - name: K_SINK
@@ -164,7 +164,7 @@ spec:
         env:
         - name: TF_CPP_VMODULE
           value: http_server=3
-        image: quay.io/mylesagray/anpr-serving:r1.15-cpu-opt
+        image: ghcr.io/mylesagray/anpr-serving
         ports:
         - containerPort: 8501
         resources:
