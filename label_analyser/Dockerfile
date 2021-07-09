@@ -13,4 +13,4 @@ COPY app/ .
 
 EXPOSE 8080
 
-CMD ["python", "-u", "/tensorflow.py"]
+CMD ["python", "-u", "/label_analyser.py"]

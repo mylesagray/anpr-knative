@@ -79,7 +79,7 @@ def load_labelmap(path):
 
 def emitErrorEvent(err, source):
     attributes = {
-    "type": "io.triggermesh.functions.tensorflow.client.response.error",
+    "type": "io.triggermesh.functions.tensorflow.label.analyser.response.error",
     "source": source,
     }
     data = { "error": err}
@@ -94,7 +94,7 @@ def emitErrorEvent(err, source):
 
 def emitNoTagFoundEvent(data, source):
     attributes = {
-    "type": "io.triggermesh.functions.tensorflow.client.response.noid",
+    "type": "io.triggermesh.functions.tensorflow.label.analyser.response.noid",
     "source": source,
     }
 
@@ -138,7 +138,7 @@ def hello_world():
           foundPlate = charText
       if foundPlate != "":
         attributes = {
-            "type": "io.triggermesh.functions.tensorflow.client",
+            "type": "io.triggermesh.functions.tensorflow.label.analyser.response.plateid",
             "source": "tfclient",
         }
         data = { "plate": foundPlate, "url": imageURL}

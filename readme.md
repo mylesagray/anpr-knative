@@ -19,7 +19,7 @@ This event is then consumed by `tensformation`, this service then performs the f
 * Creates a request to the `Tensorflow Server`.
 * Returns an event containing the `Tensorflow Server` ANPR model's raw response.
 
-The found plate event is then consumed by the `tensorflow_client`, this service then performs the following actions:
+The found plate event is then consumed by the `label_analyser`, this service then performs the following actions:
 
 * Performs the Tensorflow response analysis on the output from the model.
 * Updates the provided Google Sheet with the found plate info.
@@ -100,12 +100,12 @@ docker push harbor-repo.vmware.com/vspheretmm/tensformation:latest
 gcloud builds submit --tag gcr.io/<project>/tensformation .
 ```
 
-### Building `tensorflow_client`
+### Building `label_analyser`
 
-1: Move to the `tensorflow_client` directory.
+1: Move to the `label_analyser` directory.
 
 ```sh
-cd tensorflow_client
+cd label_analyser
 ```
 
 2: Build & submit the dockerfile.

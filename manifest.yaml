@@ -96,7 +96,7 @@ spec:
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: tensorflow-client
+  name: label-analyser
   labels:
     serving.knative.dev/visibility: cluster-local
 spec:
@@ -125,17 +125,17 @@ spec:
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
-  name: tensorflow-client
+  name: label-analyser
 spec:
   broker: default
   filter:
     attributes:
-      type: io.triggermesh.transformations.s3-tensorflow.response
+      type: io.triggermesh.transformations.tensformation.response
   subscriber:
     ref:
       apiVersion: v1
       kind: Service
-      name: tensorflow-client
+      name: label-analyser
 
 ---
 
@@ -223,7 +223,7 @@ spec:
   broker: default
   filter:
     attributes:
-      type: io.triggermesh.transformations.s3-tensorflow.response.error
+      type: io.triggermesh.transformations.tensformation.response.error
   subscriber:
       ref:
           apiVersion: serving.knative.dev/v1
@@ -235,12 +235,12 @@ spec:
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
-    name: error-display-tensorflow-client
+    name: error-display-label-analyser
 spec:
   broker: default
   filter:
     attributes:
-      type: io.triggermesh.functions.tensorflow.client.response.error
+      type: io.triggermesh.functions.tensorflow.label.analyser.response.error
   subscriber:
       ref:
           apiVersion: serving.knative.dev/v1
@@ -270,7 +270,7 @@ spec:
   broker: default
   filter:
     attributes:
-      type: io.triggermesh.functions.tensorflow.client.response.noid
+      type: io.triggermesh.functions.tensorflow.label.analyser.response.noid
   subscriber:
       ref:
           apiVersion: serving.knative.dev/v1
