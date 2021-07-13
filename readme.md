@@ -60,11 +60,25 @@ To install the AWS Sources from TriggerMesh, run:
 kubectl apply -f https://github.com/triggermesh/aws-event-sources/releases/download/v1.6.0/aws-event-sources.yaml
 ```
 
+You will need a Knative broker, we don't include one in the manifest as these are generally quite opinionated, so if you just want to get it up and running use the default broker:
+
+```sh
+kn broker create default
+```
+
+If you list the brokers, you'll find the URL for the broker you just created - just plug this into `manifest.yaml` under `K_SINK`:
+
+```sh
+$ kn broker list
+NAME      URL                                                                        AGE     CONDITIONS   READY   REASON
+default   http://broker-ingress.knative-eventing.svc.cluster.local/default/default   7d22h   5 OK / 5     True    
+```
+
 ### Deploy the app
 
 1: Update the `manifest.yaml` file, replacing the placeholder `""` marks with your information.
 
-2: Deploy the bridge.
+2: Deploy the app.
 
 ```sh
 kubectl -n default apply -f manifest.yaml
