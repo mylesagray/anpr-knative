@@ -40,36 +40,45 @@ const (
 )
 
 func (recv *Receiver) receive(ctx context.Context, e cloudevents.Event) (*cloudevents.Event, cloudevents.Result) {
-	req := &S3Event{}
-	if err := e.DataAs(&req); err != nil {
-		log.Printf("unmarshaling Event: %v", err)
-		return emitErrorEvent(err.Error(), "unmarshalingEvent")
-	}
 
-	image, err := recv.downloadFromS3Bucket(req)
-	if err != nil {
-		log.Printf("downloading from s3: %v", err)
-		return emitErrorEvent(err.Error(), "downloadingFromS3")
-	}
+	go func() {
+		req := &S3Event{}
+		if err := e.DataAs(&req); err != nil {
+			log.Printf("unmarshaling Event: %v", err)
+			recv.emitErrorEvent(err.Error(), "unmarshalingEvent")
+		}
 
-	tfResponse, err := recv.makeTensorflowRequest(image)
-	if err != nil {
-		log.Printf("requesting From Tensorflow: %v", err)
-		return emitErrorEvent(err.Error(), "requestingFromTensorflow")
-	}
+		image, err := recv.downloadFromS3Bucket(req)
+		if err != nil {
+			log.Printf("downloading from s3: %v", err)
+			recv.emitErrorEvent(err.Error(), "downloadingFromS3")
+		}
 
-	url := "https://" + req.S3.Bucket.Name + ".s3." + recv.region + ".amazonaws.com/" + req.S3.Object.Key
-	event := cloudevents.NewEvent(cloudevents.VersionV1)
-	event.SetType(response)
-	event.SetSource(url)
-	event.SetTime(time.Now())
-	err = event.SetData(cloudevents.ApplicationJSON, tfResponse)
-	if err != nil {
-		log.Printf("setting cloudevent data: %v", err)
-		return emitErrorEvent(err.Error(), "settingCEData")
-	}
+		tfResponse, err := recv.makeTensorflowRequest(image)
+		if err != nil {
+			log.Printf("requesting From Tensorflow: %v", err)
+			recv.emitErrorEvent(err.Error(), "requestingFromTensorflow")
+		}
 
-	return &event, cloudevents.ResultACK
+		ceCtx := cloudevents.ContextWithTarget(context.Background(), recv.kSink)
+
+		url := "https://" + req.S3.Bucket.Name + ".s3." + recv.region + ".amazonaws.com/" + req.S3.Object.Key
+		event := cloudevents.NewEvent(cloudevents.VersionV1)
+		event.SetType(response)
+		event.SetSource(url)
+		event.SetTime(time.Now())
+		err = event.SetData(cloudevents.ApplicationJSON, tfResponse)
+		if err != nil {
+			log.Printf("setting cloudevent data: %v", err)
+			recv.emitErrorEvent(err.Error(), "settingCEData")
+		}
+
+		if result := recv.ceClient.Send(ceCtx, event); cloudevents.IsUndelivered(result) {
+			log.Printf("failed to send, %v", result)
+		}
+	}()
+
+	return nil, cloudevents.ResultACK
 }
 
 // downloadFromS3Bucket returns a base64 encoded string of the new image at s3
@@ -149,7 +158,9 @@ func (recv *Receiver) makeTensorflowRequest(image string) ([]byte, error) {
 	return body, err
 }
 
-func emitErrorEvent(er string, source string) (*cloudevents.Event, cloudevents.Result) {
+func (recv *Receiver) emitErrorEvent(er string, source string) {
+	ctx := cloudevents.ContextWithTarget(context.Background(), recv.kSink)
+
 	responseEvent := cloudevents.NewEvent(cloudevents.VersionV1)
 	responseEvent.SetType(response + ".error")
 	responseEvent.SetSource(source)
@@ -157,8 +168,11 @@ func emitErrorEvent(er string, source string) (*cloudevents.Event, cloudevents.R
 	err := responseEvent.SetData(cloudevents.ApplicationJSON, er)
 	if err != nil {
 		log.Printf("setting error cloudevent data: %v", err)
-		return nil, cloudevents.NewHTTPResult(http.StatusInternalServerError, "setting cloudevent response data")
 	}
 
-	return &responseEvent, cloudevents.NewHTTPResult(http.StatusInternalServerError, er)
+	if result := recv.ceClient.Send(ctx, responseEvent); cloudevents.IsUndelivered(result) {
+		log.Printf("failed to send, %v", result)
+	}
+
+	fmt.Println("sent event")
 }

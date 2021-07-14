@@ -40,7 +40,7 @@ const (
 // Receiver runs a CloudEvents receiver.
 type Receiver struct {
 	s3d        *s3manager.Downloader
-	sink       string
+	kSink      string
 	tfEndpoint string
 	region     string
 	httpClient *http.Client
@@ -52,6 +52,11 @@ func main() {
 	accKey := os.Getenv(envAccKey)
 	if accKey == "" {
 		log.Fatal("Undefined environment variable: " + envAccKey)
+	}
+
+	kSink := os.Getenv(sink)
+	if kSink == "" {
+		log.Fatal("Undefined environment variable: " + sink)
 	}
 
 	region := os.Getenv(envRegion)
@@ -71,11 +76,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create client, %v", err)
 	}
-
 	r := Receiver{
 		s3d:        downloader,
 		tfEndpoint: tfEndpoint,
 		region:     region,
+		kSink:      kSink,
 		httpClient: http.DefaultClient,
 
 		ceClient: c,
