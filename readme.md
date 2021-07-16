@@ -1,10 +1,10 @@
-# Automatic Number Plate Recognition based on KNative
+# Automatic Number Plate Recognition based on Knative
 
-An auto-scaling ML-based number plate recognition system, running on KNative.
+An auto-scaling ML-based number plate recognition system, running on Knative.
 
 ![Demo of app inferring a number plate](img/demo.gif)
 
-This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow container detailed here: <https://github.com/mylesagray/docker-tensorflow-s3>, packages the TensorFlow Python client built to interact with the model and adds a "tensformation" component to deploy an event-based auto-scaling ANPR system on KNative.
+This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow container detailed here: <https://github.com/mylesagray/docker-tensorflow-s3>, packages the TensorFlow Python client built to interact with the model and adds a "tensformation" component to deploy an event-based auto-scaling ANPR system on Knative.
 
 ## Overview
 
@@ -48,9 +48,9 @@ Additionally, you will need to create or get your AWS Access Key and Secret:
 
 * <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey>
 
-#### KNative and TriggerMesh
+#### Knative and TriggerMesh
 
-It is required to run KNative and the TriggerMesh sources for this demo, you can find details on how to do that below:
+It is required to run Knative and the TriggerMesh sources for this demo, you can find details on how to do that below:
 
 * <https://docs.vmware.com/en/Cloud-Native-Runtimes-for-VMware-Tanzu/0.2/tanzu-cloud-native-runtimes-02/GUID-install.html>
 
