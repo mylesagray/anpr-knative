@@ -52,13 +52,7 @@ Additionally, you will need to create or get your AWS Access Key and Secret:
 
 It is required to run Knative and the TriggerMesh sources for this demo, you can find details on how to do that below:
 
-* <https://docs.vmware.com/en/Cloud-Native-Runtimes-for-VMware-Tanzu/0.2/tanzu-cloud-native-runtimes-02/GUID-install.html>
-
-To install the AWS Sources from TriggerMesh, run:
-
-```sh
-kubectl apply -f https://github.com/triggermesh/aws-event-sources/releases/download/v1.6.0/aws-event-sources.yaml
-```
+* < https://docs.vmware.com/en/Cloud-Native-Runtimes-for-VMware-Tanzu/1.0/tanzu-cloud-native-runtimes-1-0/GUID-cnr-overview.html>
 
 You will need a Knative broker, we don't include one in the manifest as these are generally quite opinionated, so if you just want to get it up and running use the default broker:
 
