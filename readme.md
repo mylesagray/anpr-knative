@@ -1,29 +1,50 @@
-# Automatic Number Plate Recognition based on Knative
+# Automatic Number Plate Recognition based on KNative
 
-An auto-scaling ML-based number plate recognition system, running on Knative.
+An auto-scaling ML-based number plate recognition system, running on KNative.
 
 ![Demo of app inferring a number plate](img/demo.gif)
 
-This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow container detailed here: <https://github.com/mylesagray/docker-tensorflow-s3>, packages the TensorFlow Python client built to interact with the model and adds a "tensformation" component to deploy an event-based auto-scaling ANPR system on Knative.
+This repo takes the Automatic Number Plate Recognition (ANPR) TensorFlow container detailed here: <https://github.com/mylesagray/docker-tensorflow-s3>, packages the TensorFlow Python client built to interact with the model and adds a "tensformation" component to deploy an event-based auto-scaling ANPR system on KNative.
 
 ## Overview
 
 ![Architecture Overview](./img/overview.png)
 
-This bridge starts with an event propagated by the s3 source.
+1. This bridge starts with an event propagated by the s3 source.
+<br>
+</br>
+1. This event is then consumed by `tensformation`, this service then performs the following actions:
+    * Downloads the file.
+    * Base64 encodes it.
+    * Creates a request to the `Tensorflow Server`.
+    * Returns an event containing the `Tensorflow Server` ANPR model's raw response.
+<br>
+</br>
+1. The found plate event is then consumed by the `label_analyser`, this service then performs the following actions:
+    * Performs the Tensorflow response analysis on the output from the model.
+    * Updates the provided Google Sheet with the found plate info.
+    * Returns an event back to the broker with the found plate.
+<br>
+</br>
+1. Depending upon the outcome of `lable_analyser` the following action(s) are performed:
 
-This event is then consumed by `tensformation`, this service then performs the following actions:
+    **If there is no plate found within the image:**
+    * A Datadog statistic is updated to be viewed in the dashboard. 
+    * A Slack message is posted in a designated channel conatining a similar message:
 
-* Downloads the file.
-* Base64 encodes it.
-* Creates a request to the `Tensorflow Server`.
-* Returns an event containing the `Tensorflow Server` ANPR model's raw response.
+        `Image failed to process: https://tmdmobkt.s3.us-west-2.amazonaws.com/pika.jpg`
+    If there is a plate found within the image:
+    * This Google sheet is updated -> https://docs.google.com/spreadsheets/d/1NIJOyekYYYGmu1sBMKgnDse68sgNynyJbfEgKv4UWMU/edit#gid=0
+    * This Firestore collection is updated -> https://console.cloud.google.com/firestore/data/plate_id/urwe4l2?project=ultra-hologram-297914
 
-The found plate event is then consumed by the `label_analyser`, this service then performs the following actions:
+    **If there is a bad guy detected:**
+    * An SMS message is sent to the Google voice account linked to the `demo@triggermesh.com` 
+    * This Google sheet is updated -> https://docs.google.com/spreadsheets/d/1NIJOyekYYYGmu1sBMKgnDse68sgNynyJbfEgKv4UWMU/edit#gid=0
+    * This Firestore collection is updated -> https://console.cloud.google.com/firestore/data/plate_id/urwe4l2?project=ultra-hologram-297914
 
-* Performs the Tensorflow response analysis on the output from the model.
-* Updates the provided Google Sheet with the found plate info.
-* Returns an event back to the broker with the found plate.
+   **If an error occurs:**
+    * A Zendesk ticket is created containing the service that failed in the title and the error in the body of the ticket. 
+
 
 ## Deploying the application
 
@@ -70,7 +91,7 @@ default   http://broker-ingress.knative-eventing.svc.cluster.local/default/defau
 
 ### Deploy the app
 
-1: Update the `manifest.yaml` file, replacing the placeholder `""` marks with your information.
+1: Update the `manifest.yaml` file, replacing the placeholder `''` marks with your information.
 
 2: Deploy the app.
 
