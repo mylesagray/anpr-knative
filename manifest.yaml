@@ -4,8 +4,29 @@ metadata:
   name: aws
 type: Opaque
 stringData:
-  AWS_ACCESS_KEY: ""
-  AWS_SECRET_KEY: ""
+  AWS_ACCESS_KEY: ''
+  AWS_SECRET_KEY: ''
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: twilio
+type: Opaque
+stringData:
+  sid: ''
+  token: ''
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: slack-target
+type: Opaque
+stringData:
+  token: ''
 
 ---
 
@@ -15,162 +36,390 @@ metadata:
   name: google
 type: Opaque
 stringData:
-  # Service account credentials in JSON format. 
   GOOGLE_CREDENTIALS_JSON: |-
-              ""
+              {
+                ''
+              }
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ddapitoken
+type: Opaque
+stringData:
+  apiKey: __API_KEY__
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zendesktargetsecret
+type: Opaque
+stringData:
+   token: '' #Example: J5LChYusFc7r2Aye97gbVY4saUgPM07x7Erep1yx
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Broker
+metadata:
+    name: default
+
 ---
 
 apiVersion: sources.triggermesh.io/v1alpha1
 kind: AWSS3Source
 metadata:
-  name: my-bucket
+    name: my-bucket
 spec:
-  # This should point to your aws s3 bucket IE: arn:aws:s3:us-west-2:925906438773:demobkt-triggermesh
-  # The default ARN from AWS needs the region and your account ID added to it as above: 
-  # https://docs.triggermesh.io/sources/awss3/#amazon-resource-name-arn
-  arn: ""
-  credentials:
-    accessKeyID:
-      valueFromSecret:
-        key: AWS_ACCESS_KEY
-        name: aws
-    secretAccessKey:
-      valueFromSecret:
-        key: AWS_SECRET_KEY
-        name: aws
-  eventTypes:
-  - s3:ObjectCreated:*
-  sink:
-    ref:
-      apiVersion: eventing.knative.dev/v1
-      kind: Broker
-      name: default
-
----
-
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
- name: tensformation
-spec:
-  template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/target: "4"
-    spec:
-      containers:
-        - image: ghcr.io/mylesagray/tensformation
-          env:
-          # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
-            - name: K_SINK
-              value: ""
-            - name: AWS_REGION
-              value: ""
-          # This should point the the deployed tensorflow service ie: https://tf-inference-server.jeff.k.triggermesh.io/v1/models/anpr:predict
-          # Please note, the endpoint of '/v1/models/anpr:predict' must be used here.
-            - name: TENSORFLOW_ENDPOINT
-              value: ""
-          envFrom: 
-            - secretRef:
+    arn: ''
+    credentials:
+        accessKeyID:
+            valueFromSecret:
+                key: AWS_ACCESS_KEY
                 name: aws
-
----
-
-apiVersion: eventing.knative.dev/v1
-kind: Trigger
-metadata:
-  name: tensformation
-spec:
-  broker: default
-  filter:
-    attributes:
-      type: com.amazon.s3.objectcreated
-  subscriber:
-    ref:
-      apiVersion: v1
-      kind: Service
-      name: tensformation
+        secretAccessKey:
+            valueFromSecret:
+                key: AWS_SECRET_KEY
+                name: aws
+    eventTypes:
+        - s3:ObjectCreated:*
+    sink:
+        ref:
+            apiVersion: eventing.knative.dev/v1
+            kind: Broker
+            name: default
 
 ---
 
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: label-analyser
-  labels:
-    serving.knative.dev/visibility: cluster-local
+    name: tensformation
 spec:
-  template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/target: "10"
-    spec:
-      containers:
-      - image: ghcr.io/mylesagray/label_analyser
-        env:
-         # This should point to the broker in the namespace ie: http://broker-ingress.knative-eventing.svc.cluster.local/jeff/default
-          - name: K_SINK
-            value: ""
-         # The Google sheet ID to be updated
-         # You need to set up a project, service account and add the sheets service to it:
-         # https://docs.triggermesh.io/targets/googlesheets/
-          - name: SHEET_ID
-            value: ""
-        envFrom: 
-          - secretRef:
-              name: google
+    template:
+        metadata:
+            annotations:
+                autoscaling.knative.dev/target: '5'
+        spec:
+            containers:
+                -
+                    env:
+                        -
+                            name: K_SINK
+                            value: >-
+                                ''
+                        -
+                            name: AWS_REGION
+                            value: us-west-2
+                        -
+                            name: TENSORFLOW_ENDPOINT
+                            value: >-
+                                ''
+                    envFrom:
+                        -
+                            secretRef:
+                                name: aws
+                    image: ghcr.io/mylesagray/tensformation
 
 ---
 
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
-  name: label-analyser
+    name: tensformation
 spec:
-  broker: default
-  filter:
-    attributes:
-      type: io.triggermesh.transformations.tensformation.response
-  subscriber:
-    ref:
-      apiVersion: v1
-      kind: Service
-      name: label-analyser
+    broker: default
+    filter:
+        attributes:
+            type: com.amazon.s3.objectcreated
+    subscriber:
+        ref:
+            apiVersion: v1
+            kind: Service
+            name: tensformation
 
 ---
 
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: tf-inference-server
+    labels:
+        serving.knative.dev/visibility: cluster-local
+    name: label-analyser
 spec:
-  template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/window: "180s"
-        autoscaling.knative.dev/target: "5"
-    spec:
-      containers:
-      - args:
-        - --model_config_file=/configs/models-local.config
-        - --monitoring_config_file=/configs/monitoring_config.txt
-        - --rest_api_timeout_in_ms=0
-        - --tensorflow_intra_op_parallelism=2
-        - --tensorflow_inter_op_parallelism=2
-        - --max_batch_size=5
-        - --num_batch_threads=2
-        - --max_enqueued_batches=1
-        - --enable_batching
-        env:
-        - name: TF_CPP_VMODULE
-          value: http_server=3
-        image: ghcr.io/mylesagray/anpr-serving
-        ports:
-        - containerPort: 8501
-        resources:
-          requests:
-            cpu: 2
-            memory: 4Gi
+    template:
+        metadata:
+            annotations:
+                autoscaling.knative.dev/target: '2'
+        spec:
+            containers:
+                -
+                    env:
+                        -
+                            name: K_SINK
+                            value: >-
+                                ''
+                        -
+                            name: SHEET_ID
+                            value: >-
+                                ''
+                    envFrom:
+                        -
+                            secretRef:
+                                name: google
+                    image: gcr.io/fit-stream-305821/tfc:latest
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: label-analyser
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: >-
+                io.triggermesh.transformations.tensformation.response
+    subscriber:
+        ref:
+            apiVersion: v1
+            kind: Service
+            name: label-analyser
+
+---
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+    name: tf-inference-server
+spec:
+    template:
+        metadata:
+            annotations:
+                autoscaling.knative.dev/target: '4'
+        spec:
+            containers:
+                -
+                    args:
+                        - >-
+                            --model_config_file=/configs/models-local.config
+                        - >-
+                            --monitoring_config_file=/configs/monitoring_config.txt
+                        - '--rest_api_timeout_in_ms=0'
+                        - '--tensorflow_intra_op_parallelism=2'
+                        - '--tensorflow_inter_op_parallelism=2'
+                        - '--max_batch_size=5'
+                        - '--num_batch_threads=2'
+                        - '--max_enqueued_batches=1'
+                        - '--enable_batching'
+                    env:
+                        -
+                            name: TF_CPP_VMODULE
+                            value: http_server=3
+                    image: ghcr.io/mylesagray/anpr-serving
+                    ports:
+                        -
+                            containerPort: 8501
+                    resources:
+                        requests:
+                            cpu: 2
+                            memory: 4Gi
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: InfraTarget
+metadata:
+    name: bad-guy-detector
+spec:
+    script:
+        code: |-
+            function handle(input) {
+            console.log("got event:");
+            console.log(input.data);
+            if (input.data.plate == "1r3ir5s") {
+              input.type = "io.triggermesh.twilio.sms.send";
+              input.data.message = "Bad guy found in our parking lot! ";
+              return input;
+              }
+            return null;
+            }
+        timeout: 2000
+    typeLoopProtection: true
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: bad-guy-detector
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: io.triggermesh.functions.tensorflow.client
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: InfraTarget
+            name: bad-guy-detector
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: TwilioTarget
+metadata:
+    name: google-voice
+spec:
+    defaultPhoneFrom: ''
+    defaultPhoneTo: ''
+    sid:
+        secretKeyRef:
+            key: sid
+            name: twilio
+    token:
+        secretKeyRef:
+            key: token
+            name: twilio
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: google-voice
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: io.triggermesh.twilio.sms.send
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: TwilioTarget
+            name: google-voice
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: SlackTarget
+metadata:
+    name: noplateid-notifications
+spec:
+    token:
+        secretKeyRef:
+            key: token
+            name: slack-target
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: noplateid-notifications
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: com.slack.webapi.chat.postMessage
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: SlackTarget
+            name: noplateid-notifications
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: InfraTarget
+metadata:
+    name: noplateid-transformation
+spec:
+    script:
+        code: >-
+            function handle(input) {
+            console.log("got event:");
+            console.log(input.data);
+            input.type = "com.slack.webapi.chat.postMessage";
+            input.data.channel = "C01KGFQGLUT";
+            input.data.text = "Image failed to process: " +
+            input.source;
+            return input;
+            }
+        timeout: 2000
+    typeLoopProtection: true
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: noplateid-transformation
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: >-
+                io.triggermesh.functions.tensorflow.client.response.noid
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: InfraTarget
+            name: noplateid-transformation
+
+---
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+    name: error-display
+spec:
+    template:
+        spec:
+            containers:
+                -
+                    image: >-
+                        gcr.io/knative-releases/knative.dev/eventing-contrib/cmd/event_display@sha256:46d5a66f300c3ced590835d379a0e9badf413ae7ab60f21a2550ecedbc9eb9d3
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: error-display-tensformation
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: >-
+                io.triggermesh.functions.tensorflow.client.response.error
+    subscriber:
+        ref:
+            apiVersion: serving.knative.dev/v1
+            kind: Service
+            name: error-display
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: error-display-label-analyser
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: >-
+                io.triggermesh.functions.tensorflow.label.analyser.response.error
+    subscriber:
+        ref:
+            apiVersion: serving.knative.dev/v1
+            kind: Service
+            name: error-display
 
 ---
 
@@ -179,13 +428,12 @@ kind: Service
 metadata:
     name: all-display
 spec:
-  template:
-    spec:
-      containers:
-       -  image: gcr.io/knative-releases/knative.dev/eventing-contrib/cmd/event_display@sha256:46d5a66f300c3ced590835d379a0e9badf413ae7ab60f21a2550ecedbc9eb9d3
-
-# OR if you want sockeye 
-# docker.io/n3wscott/sockeye:v0.5.0@sha256:64c22fe8688a6bb2b44854a07b0a2e1ad021cd7ec52a377a6b135afed5e9f5d2
+    template:
+        spec:
+            containers:
+                -
+                    image: >-
+                        gcr.io/knative-releases/knative.dev/eventing-contrib/cmd/event_display@sha256:46d5a66f300c3ced590835d379a0e9badf413ae7ab60f21a2550ecedbc9eb9d3
 
 ---
 
@@ -202,77 +450,265 @@ spec:
             name: all-display
 
 ---
-# Used to monitor for any errors that may occur within tensformation or tensorflow_client
-apiVersion: serving.knative.dev/v1
-kind: Service
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: GoogleCloudFirestoreTarget
 metadata:
-    name: error-display
+    name: firestore
 spec:
-  template:
-    spec:
-      containers:
-       -  image: docker.io/n3wscott/sockeye:v0.5.0@sha256:64c22fe8688a6bb2b44854a07b0a2e1ad021cd7ec52a377a6b135afed5e9f5d2
+    credentialsJson:
+        secretKeyRef:
+            key: creds
+            name: googlecloudfirestore
+    defaultCollection: deploydemo
+    discardCloudEventContext: false
+    projectID: ''
+    sink:
+        ref:
+            name: default
 
 ---
 
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
-    name: error-display-tensformation
+    name: firestore-target
+    namespace: demo
 spec:
-  broker: default
-  filter:
-    attributes:
-      type: io.triggermesh.transformations.tensformation.response.error
-  subscriber:
-      ref:
-          apiVersion: serving.knative.dev/v1
-          kind: Service
-          name: error-display
+    broker: default
+    filter:
+        attributes:
+            type: io.triggermesh.google.firestore.write
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: GoogleCloudFirestoreTarget
+            name: firestore
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: InfraTarget
+metadata:
+    name: tran-firestore-write
+spec:
+    script:
+        code: >-
+            function handle(input) {
+            console.log("got event:");
+            console.log(input.data);
+            input.type =
+            "io.triggermesh.google.firestore.write";
+            input.data.collection = "plate_id";
+            input.data.document = input.data.plate;
+            input.data.data = {"plate": input.data.plate, "url":
+            input.data.url};
+            return input;
+            }
+        timeout: 2000
+    typeLoopProtection: true
 
 ---
 
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
-    name: error-display-label-analyser
+    name: trans-firestoree-write
+    namespace: demo
 spec:
-  broker: default
-  filter:
-    attributes:
-      type: io.triggermesh.functions.tensorflow.label.analyser.response.error
-  subscriber:
-      ref:
-          apiVersion: serving.knative.dev/v1
-          kind: Service
-          name: error-display
-
----
-
-# Used to monitor for events that occur when a plate is not recognized in an image. 
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
-    name: no-plateid-display
-spec:
-  template:
-    spec:
-      containers:
-       -  image: docker.io/n3wscott/sockeye:v0.5.0@sha256:64c22fe8688a6bb2b44854a07b0a2e1ad021cd7ec52a377a6b135afed5e9f5d2
+    broker: default
+    filter:
+        attributes:
+            type: io.triggermesh.functions.tensorflow.client
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: InfraTarget
+            name: tran-firestore-write
 
 ---
 
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
-    name: no-plateid-display
+    name: zendesk
+    namespace: demo
 spec:
-  broker: default
-  filter:
-    attributes:
-      type: io.triggermesh.functions.tensorflow.label.analyser.response.noid
-  subscriber:
-      ref:
-          apiVersion: serving.knative.dev/v1
-          kind: Service
-          name: no-plateid-display
+    broker: default
+    filter:
+        attributes:
+            type: com.zendesk.ticket.create
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: ZendeskTarget
+            name: zd-target
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: ZendeskTarget
+metadata:
+    name: zd-target
+name: zd-target-0
+spec:
+    email: ''
+    subdomain: ''
+    subject: ''
+    token:
+        secretKeyRef:
+            key: token
+            name: zendesktarget-secret
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: InfraTarget
+metadata:
+    name: tran-zendesk-ticket-create
+spec:
+    script:
+        code: |-
+            function handle(input) {
+            console.log("got event:");
+            console.log(input.data);
+            input.type = "com.zendesk.ticket.create";
+            input.data.subject = input.type;
+            input.data.body = input.data;
+            return input;
+            }
+        timeout: 2000
+    typeLoopProtection: true
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: tran-zendesk-ticket-create-tfc
+    namespace: demo
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: >-
+                io.triggermesh.functions.tensorflow.client.response.error
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: InfraTarget
+            name: tran-zendesk-ticket-create
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: tran-zendesk-ticket-create-la
+    namespace: demo
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: >-
+                io.triggermesh.functions.tensorflow.label.analyser.response.error
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: InfraTarget
+            name: tran-zendesk-ticket-create
+
+---
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: DatadogTarget
+metadata:
+    name: ddstats
+spec:
+    apiKey:
+        secretKeyRef:
+            key: apiKey
+            name: ddapitoken
+    discardCloudEventContext: false
+    metricPrefix: tensorflow
+
+
+---
+
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: ddstats-trigger
+    namespace: demo
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: io.triggermesh.datadog.metric.submit
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: DatadogTarget
+            name: ddstats
+
+
+---
+
+
+apiVersion: targets.triggermesh.io/v1alpha1
+kind: InfraTarget
+metadata:
+    name: ddstats-trans
+spec:
+    script:
+        code: |4-
+                  function handle(input) {
+                  var dateobj = Math.floor(Date.now() / 1000)
+                  input.data = {"series":[{"metric":input.type,"points":[[String(dateobj),String(1)]]}]}
+                  input.type = "io.triggermesh.datadog.metric.submit"
+                  return input;
+                  }
+        timeout: 2000
+    typeLoopProtection: true
+
+
+---
+
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: ddstats-trigger-trans
+    namespace: demo
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: io.triggermesh.functions.tensorflow.client
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: InfraTarget
+            name: ddstats-trans
+
+
+
+---
+
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+    name: ddstats-trigger-trans-noid
+    namespace: demo
+spec:
+    broker: default
+    filter:
+        attributes:
+            type: >-
+                io.triggermesh.functions.tensorflow.client.response.noid
+    subscriber:
+        ref:
+            apiVersion: targets.triggermesh.io/v1alpha1
+            kind: InfraTarget
+            name: ddstats-trans
