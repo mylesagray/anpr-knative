@@ -79,7 +79,7 @@ def load_labelmap(path):
 
 def emitErrorEvent(err, source):
     attributes = {
-    "type": "io.triggermesh.functions.tensorflow.client.response.error",
+    "type": "io.triggermesh.functions.tensorflow.label.analyser.response.error",
     "source": source,
     }
     data = { "error": err}
@@ -94,7 +94,7 @@ def emitErrorEvent(err, source):
 
 def emitNoTagFoundEvent(data, source):
     attributes = {
-    "type": "io.triggermesh.functions.tensorflow.client.response.noid",
+    "type": "io.triggermesh.functions.tensorflow.label.analyser.response.noid",
     "source": source,
     }
 
@@ -138,8 +138,8 @@ def hello_world():
           foundPlate = charText
       if foundPlate != "":
         attributes = {
-            "type": "io.triggermesh.functions.tensorflow.client",
-            "source": "https://example.com/event-producer",
+            "type": "io.triggermesh.functions.tensorflow.label.analyser.response.plateid",
+            "source": "tfclient",
         }
         data = { "plate": foundPlate, "url": imageURL}
 
@@ -148,7 +148,7 @@ def hello_world():
 
         # send and print event
         requests.post(sink, headers=headers, data=body)
-        print(f"Sent {event['id']} from {event['source']} with " f"{event.data}")
+        # print(f"Sent {event['id']} from {event['source']} with " f"{event.data}")
 
         creds = os.environ['GOOGLE_CREDENTIALS_JSON']
         spreadsheet_id = os.environ['SHEET_ID']
@@ -163,15 +163,21 @@ def hello_world():
         rows = [
             [foundPlate, imageURL, time_now ],
         ]
-        service.spreadsheets().values().append(spreadsheetId=spreadsheet_id,range="Sheet1!A:Z",body={"majorDimension": "ROWS","values": rows},valueInputOption="USER_ENTERED").execute()
+
+        result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,range="Sheet1!A:Z").execute()
+
+        values = result.get('values')
+
+        lr = len(values)
+
+        service.spreadsheets().values().append(spreadsheetId=spreadsheet_id,range="Sheet1!A"+str(lr)+":Z",body={"majorDimension": "ROWS","values": rows},valueInputOption="USER_ENTERED").execute()
 
         return data
 
       if foundPlate == "":
         event = from_http(request.headers, request.get_data())
         headers, body = to_structured(event)
-        emitNoTagFoundEvent(event.data, event['source'])
-        # emitNoTagFoundEvent(event.data, event.source)
+        emitNoTagFoundEvent(event.data,"noPlateID")
         return 'no plate match'
 
     except KeyError as e:
