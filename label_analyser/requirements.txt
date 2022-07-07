@@ -1,7 +1,7 @@
 absl-py==0.13.0
 astor==0.8.1
 cached-property==1.5.2
-cachetools==4.2.2
+cachetools==4.2.4
 certifi==2021.5.30
 chardet==4.0.0
 click==8.0.1
