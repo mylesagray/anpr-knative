@@ -47,7 +47,7 @@ six==1.16.0
 sympy==1.8
 tensorboard==1.15.0
 tensorflow==1.15.0
-tensorflow-estimator==1.15.1
+tensorflow-estimator==1.15.2
 termcolor==1.1.0
 typing-extensions==3.10.0.0
 uritemplate==3.0.1
