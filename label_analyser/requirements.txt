@@ -49,7 +49,7 @@ tensorboard==1.15.0
 tensorflow==1.15.0
 tensorflow-estimator==1.15.1
 termcolor==1.1.0
-typing-extensions==3.10.0.0
+typing-extensions==3.10.0.2
 uritemplate==3.0.1
 urllib3==1.26.6
 Werkzeug==2.0.1
