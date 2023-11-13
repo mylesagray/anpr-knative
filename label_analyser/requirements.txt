@@ -7,7 +7,7 @@ chardet==4.0.0
 click==8.0.1
 cloudevents==1.2.0
 deprecation==2.1.0
-Flask==2.0.1
+Flask==2.3.3
 gast==0.2.2
 google-api-core==1.30.0
 google-api-python-client==2.11.0
