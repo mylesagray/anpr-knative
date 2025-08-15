@@ -32,7 +32,7 @@ mpmath==1.2.1
 numpy==1.21.0
 nupy==0.1.1
 oauthlib==3.1.1
-opencv-python==4.5.2.54
+opencv-python==4.8.1.78
 opt-einsum==3.3.0
 packaging==20.9
 protobuf==3.17.3
